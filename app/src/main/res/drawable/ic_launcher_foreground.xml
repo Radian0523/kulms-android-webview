@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- "K" letter centered in safe zone (24dp inset on each side = 60dp usable) -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M38,34 L46,34 L46,49 L58,34 L67,34 L53,50 L68,74 L59,74 L47,55 L46,56 L46,74 L38,74 Z" />
+</vector>

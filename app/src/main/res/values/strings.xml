@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">KULMS+</string>
+
+    <!-- Login -->
+    <string name="login_subtitle">京都大学 学習支援システム</string>
+    <string name="label_username">ECS-ID / SPS-ID</string>
+    <string name="label_password">パスワード</string>
+    <string name="hide_password">パスワードを隠す</string>
+    <string name="show_password">パスワードを表示</string>
+    <string name="save_password">この端末にパスワードを保存（暗号化）</string>
+    <string name="logging_in">ログイン中…</string>
+    <string name="login">ログイン</string>
+    <string name="login_browser">Web ブラウザでログイン</string>
+    <string name="login_browser_desc">（パスキー / 多要素認証を使う場合）</string>
+    <string name="verifying">認証を確認中…</string>
+    <string name="login_done">ログイン完了 → LMS へ</string>
+    <string name="tap_after_auth">認証完了後にタップしてください</string>
+    <string name="back_to_credentials">ID/パスワード入力に戻る</string>
+    <string name="session_not_confirmed">セッションが確認できません。ログインしてから再度タップしてください。</string>
+    <string name="verification_failed">確認に失敗しました: %1$s</string>
+
+    <!-- WebView toolbar -->
+    <string name="logout">ログアウト</string>
+    <string name="logout_confirm">ログアウトしますか？</string>
+    <string name="logout_confirm_body">セッションとキャッシュが削除されます</string>
+    <string name="cancel">キャンセル</string>
+    <string name="go_back">戻る</string>
+    <string name="go_forward">進む</string>
+    <string name="reload">再読み込み</string>
+</resources>

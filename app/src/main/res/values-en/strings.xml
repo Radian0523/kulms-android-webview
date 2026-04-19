@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Login -->
+    <string name="login_subtitle">Kyoto University Learning Management System</string>
+    <string name="label_username">ECS-ID / SPS-ID</string>
+    <string name="label_password">Password</string>
+    <string name="hide_password">Hide password</string>
+    <string name="show_password">Show password</string>
+    <string name="save_password">Save password on this device (encrypted)</string>
+    <string name="logging_in">Logging in…</string>
+    <string name="login">Log in</string>
+    <string name="login_browser">Log in with web browser</string>
+    <string name="login_browser_desc">(For passkey / multi-factor authentication)</string>
+    <string name="verifying">Verifying…</string>
+    <string name="login_done">Login complete → LMS</string>
+    <string name="tap_after_auth">Tap after completing authentication</string>
+    <string name="back_to_credentials">Back to ID/password input</string>
+    <string name="session_not_confirmed">Session could not be confirmed. Please log in and try again.</string>
+    <string name="verification_failed">Verification failed: %1$s</string>
+
+    <!-- WebView toolbar -->
+    <string name="logout">Log out</string>
+    <string name="logout_confirm">Log out?</string>
+    <string name="logout_confirm_body">Session and cache will be deleted</string>
+    <string name="cancel">Cancel</string>
+    <string name="go_back">Back</string>
+    <string name="go_forward">Forward</string>
+    <string name="reload">Reload</string>
+</resources>
