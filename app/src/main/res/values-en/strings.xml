@@ -18,6 +18,18 @@
     <string name="session_not_confirmed">Session could not be confirmed. Please log in and try again.</string>
     <string name="verification_failed">Verification failed: %1$s</string>
 
+    <!-- Notification offset labels (dynamic) -->
+    <string name="offset_days_before">%1$d days before</string>
+    <string name="offset_hours_before">%1$d hours before</string>
+    <string name="offset_mins_before">%1$d min before</string>
+
+    <!-- Notification content -->
+    <string name="notif_title_soon">Assignment deadline approaching</string>
+    <string name="notif_title_approaching">Assignment deadline is near</string>
+    <string name="notif_body">\"%1$s\" (%2$s) — %3$s until deadline</string>
+    <string name="notif_channel_name">Deadline reminders</string>
+    <string name="notif_channel_desc">Assignment deadline notifications</string>
+
     <!-- WebView toolbar -->
     <string name="logout">Log out</string>
     <string name="logout_confirm">Log out?</string>

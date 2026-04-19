@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import com.radian0523.kulms_plus_for_android.notification.NotificationHelper
 import org.json.JSONObject
 
 /** セッション切れを示す例外。 */
@@ -337,6 +338,22 @@ object WebViewManager {
             }
             saveStore(store)
             sendCallback(callbackId, JSONObject())
+
+            // 課題データ更新時に通知をスケジュール
+            if (items.has("kulms-assignments") || items.has("kulms-checked-assignments")) {
+                try {
+                    val assignmentsData = store.optJSONObject("kulms-assignments")
+                    if (assignmentsData != null) {
+                        val assignments = assignmentsData.optJSONArray("assignments")
+                        if (assignments != null) {
+                            val checked = store.optJSONObject("kulms-checked-assignments") ?: JSONObject()
+                            NotificationHelper.scheduleFromExtensionData(appContext, assignments, checked)
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to schedule notifications: ${e.message}")
+                }
+            }
         }
 
         private fun handleRemove(msg: JSONObject, callbackId: String) {

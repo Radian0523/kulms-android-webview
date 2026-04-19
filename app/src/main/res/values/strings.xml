@@ -20,6 +20,18 @@
     <string name="session_not_confirmed">セッションが確認できません。ログインしてから再度タップしてください。</string>
     <string name="verification_failed">確認に失敗しました: %1$s</string>
 
+    <!-- Notification offset labels (dynamic) -->
+    <string name="offset_days_before">%1$d日前</string>
+    <string name="offset_hours_before">%1$d時間前</string>
+    <string name="offset_mins_before">%1$d分前</string>
+
+    <!-- Notification content -->
+    <string name="notif_title_soon">課題の締切まもなく</string>
+    <string name="notif_title_approaching">課題の締切が近づいています</string>
+    <string name="notif_body">「%1$s」（%2$s）の締切まで%3$s</string>
+    <string name="notif_channel_name">締切リマインド</string>
+    <string name="notif_channel_desc">課題の締切通知</string>
+
     <!-- WebView toolbar -->
     <string name="logout">ログアウト</string>
     <string name="logout_confirm">ログアウトしますか？</string>
