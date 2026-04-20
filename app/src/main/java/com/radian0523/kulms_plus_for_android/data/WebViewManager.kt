@@ -63,6 +63,9 @@ object WebViewManager {
     /** セッション切れコールバック。 */
     var onSessionExpired: (() -> Unit)? = null
 
+    /** ポータル到達コールバック（WebView ログイン用自動遷移）。 */
+    var onPortalReached: (() -> Unit)? = null
+
     fun init(context: Context) {
         if (initialized) return
         appContext = context.applicationContext
@@ -302,6 +305,7 @@ object WebViewManager {
                     "set" -> handleSet(msg, callbackId)
                     "remove" -> handleRemove(msg, callbackId)
                     "clear" -> handleClear(callbackId)
+                    "nativeFetch" -> handleNativeFetch(msg, callbackId)
                     else -> sendCallback(callbackId, JSONObject())
                 }
             } catch (e: Exception) {
@@ -371,6 +375,50 @@ object WebViewManager {
             sendCallback(callbackId, JSONObject())
         }
 
+        private fun handleNativeFetch(msg: JSONObject, callbackId: String) {
+            val url = msg.optString("url", "")
+            if (url.isEmpty()) {
+                sendCallback(callbackId, JSONObject().put("error", "Invalid URL"))
+                return
+            }
+
+            Thread {
+                try {
+                    val connection = java.net.URL(url).openConnection() as java.net.HttpURLConnection
+                    connection.requestMethod = "GET"
+                    connection.connectTimeout = 15000
+                    connection.readTimeout = 15000
+
+                    val statusCode = connection.responseCode
+                    val bytes = connection.inputStream.readBytes()
+
+                    // Detect charset from Content-Type header
+                    val contentType = (connection.contentType ?: "").lowercase()
+                    val charset = when {
+                        contentType.contains("utf-8") -> Charsets.UTF_8
+                        contentType.contains("euc-jp") || contentType.contains("euc_jp") ->
+                            java.nio.charset.Charset.forName("EUC-JP")
+                        else -> java.nio.charset.Charset.forName("Shift_JIS")
+                    }
+
+                    val text = try {
+                        String(bytes, charset)
+                    } catch (e: Exception) {
+                        String(bytes, Charsets.UTF_8)
+                    }
+
+                    connection.disconnect()
+
+                    val result = JSONObject()
+                        .put("text", text)
+                        .put("status", statusCode)
+                    sendCallback(callbackId, result)
+                } catch (e: Exception) {
+                    sendCallback(callbackId, JSONObject().put("error", e.message ?: "Fetch failed"))
+                }
+            }.start()
+        }
+
         private fun loadStore(): JSONObject {
             val prefs = appContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             val raw = prefs.getString(STORE_KEY, null) ?: return JSONObject()
@@ -416,7 +464,8 @@ object WebViewManager {
         private val scriptNames = listOf(
             "src/settings.js", "src/assignments.js", "src/submit-detect.js",
             "src/tree-view.js", "src/course-name.js", "src/course-click.js",
-            "src/tool-visibility.js", "src/textbooks.js",
+            "src/tool-visibility.js",
+            "kulms-textbook-handler.js", "src/textbooks.js",
             "src/sidebar-resize.js", "src/top-favbar.js"
         )
 
@@ -544,6 +593,17 @@ object WebViewManager {
             if (url != null) {
                 val listeners = ArrayList(loginNavigationListeners)
                 for (l in listeners) l(url)
+            }
+
+            // ポータル到達自動検知（credential login 中以外）
+            if (loginNavigationListeners.isEmpty() && url != null) {
+                val isPortalPage = url.startsWith("$BASE_URL/portal")
+                    && !url.contains("/login")
+                    && !url.contains("/relogin")
+                    && !url.contains("/logout")
+                if (isPortalPage) {
+                    onPortalReached?.invoke()
+                }
             }
 
             // IIMC リダイレクト検知（ログイン済みの場合のみ）
