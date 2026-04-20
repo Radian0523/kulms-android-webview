@@ -95,23 +95,23 @@ def gen_feature_graphic():
     bg = make_gradient_horizontal(W, H, (41, 98, 255), (109, 58, 230)).convert("RGBA")
     draw = ImageDraw.Draw(bg)
 
-    title_font = ImageFont.truetype(FONT_BOLD, 78)
-    sub_font = ImageFont.truetype(FONT_REGULAR, 36)
+    title_font = ImageFont.truetype(FONT_BOLD, 64)
+    sub_font = ImageFont.truetype(FONT_REGULAR, 28)
 
-    draw.text((60, 130), "KULMS+", fill="white", font=title_font)
-    draw.text((60, 230), "京都大学LMS 拡張アプリ", fill=(255, 255, 255, 230), font=sub_font)
-    draw.text((60, 290), "全科目の課題・テストを一覧管理", fill=(255, 255, 255, 200), font=sub_font)
-    draw.text((60, 350), "教科書の自動取得・締切通知", fill=(255, 255, 255, 200), font=sub_font)
+    draw.text((50, 120), "KULMS+", fill="white", font=title_font)
+    draw.text((50, 205), "京都大学LMS 拡張アプリ", fill=(255, 255, 255, 230), font=sub_font)
+    draw.text((50, 255), "全科目の課題・テストを一覧管理", fill=(255, 255, 255, 200), font=sub_font)
+    draw.text((50, 305), "教科書の自動取得・締切通知", fill=(255, 255, 255, 200), font=sub_font)
 
     ss = Image.open(SRC_01).convert("RGBA")
-    target_h = int(H * 0.85)
+    target_h = int(H * 0.75)
     scale = target_h / ss.height
     target_w = int(ss.width * scale)
     ss = ss.resize((target_w, target_h), Image.LANCZOS)
-    ss = add_rounded_corners(ss, 25)
+    ss = add_rounded_corners(ss, 20)
 
     shadow, blur_r = add_shadow(ss, offset=(0, 10), blur_radius=25, opacity=80)
-    ss_x = W - target_w - 80
+    ss_x = W - target_w - 30
     ss_y = (H - target_h) // 2
     bg.paste(shadow, (ss_x - blur_r, ss_y - blur_r), shadow)
     bg.paste(ss, (ss_x, ss_y), ss)
