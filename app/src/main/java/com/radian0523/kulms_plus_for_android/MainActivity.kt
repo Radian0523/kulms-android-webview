@@ -1,6 +1,7 @@
 package com.radian0523.kulms_plus_for_android
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -29,6 +30,22 @@ class MainActivity : ComponentActivity() {
         setContent {
             KULMSTheme {
                 MainContent()
+            }
+        }
+
+        handleNotificationIntent(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        handleNotificationIntent(intent)
+    }
+
+    private fun handleNotificationIntent(intent: Intent?) {
+        val url = intent?.getStringExtra("targetUrl") ?: return
+        if (url.isNotEmpty()) {
+            WebViewManager.webView.post {
+                WebViewManager.webView.loadUrl(url)
             }
         }
     }

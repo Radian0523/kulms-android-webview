@@ -13,6 +13,7 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
+import com.radian0523.kulms_plus_for_android.MainActivity
 import com.radian0523.kulms_plus_for_android.R
 import org.json.JSONArray
 import org.json.JSONObject
@@ -85,7 +86,7 @@ object NotificationHelper {
         val now = System.currentTimeMillis()
         val offsets = getNotificationOffsets(context)
 
-        data class Candidate(val id: Int, val title: String, val body: String, val triggerAt: Long)
+        data class Candidate(val id: Int, val title: String, val body: String, val triggerAt: Long, val url: String)
 
         val candidates = mutableListOf<Candidate>()
 
@@ -120,6 +121,7 @@ object NotificationHelper {
             }
 
             val courseName = obj.optString("courseName", "")
+            val url = "https://lms.gakusei.kyoto-u.ac.jp/portal/site/$courseId"
 
             for (offset in offsets) {
                 val triggerAt = deadline - offset.toLong() * 60 * 1000
@@ -139,7 +141,8 @@ object NotificationHelper {
                         id = "kulms-${offset}m-$compositeKey".hashCode(),
                         title = title,
                         body = body,
-                        triggerAt = triggerAt
+                        triggerAt = triggerAt,
+                        url = url
                     )
                 )
             }
@@ -151,7 +154,7 @@ object NotificationHelper {
         Log.d(TAG, "scheduleFromExtensionData: scheduling ${candidates.size} notifications")
 
         for (candidate in candidates) {
-            scheduleAlarm(context, candidate.id, candidate.title, candidate.body, candidate.triggerAt)
+            scheduleAlarm(context, candidate.id, candidate.title, candidate.body, candidate.triggerAt, candidate.url)
         }
     }
 
@@ -160,13 +163,15 @@ object NotificationHelper {
         id: Int,
         title: String,
         body: String,
-        triggerAt: Long
+        triggerAt: Long,
+        url: String = ""
     ) {
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         val intent = Intent(context, NotificationReceiver::class.java).apply {
             putExtra("id", id)
             putExtra("title", title)
             putExtra("body", body)
+            putExtra("url", url)
         }
         val pendingIntent = PendingIntent.getBroadcast(
             context, id, intent,
@@ -183,12 +188,21 @@ object NotificationHelper {
         }
     }
 
-    fun showNotification(context: Context, id: Int, title: String, body: String) {
+    fun showNotification(context: Context, id: Int, title: String, body: String, url: String = "") {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS)
                 != PackageManager.PERMISSION_GRANTED
             ) return
         }
+
+        val tapIntent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            if (url.isNotEmpty()) putExtra("targetUrl", url)
+        }
+        val tapPendingIntent = PendingIntent.getActivity(
+            context, id, tapIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
 
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.mipmap.ic_launcher)
@@ -196,6 +210,7 @@ object NotificationHelper {
             .setContentText(body)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
+            .setContentIntent(tapPendingIntent)
             .build()
 
         NotificationManagerCompat.from(context).notify(id, notification)

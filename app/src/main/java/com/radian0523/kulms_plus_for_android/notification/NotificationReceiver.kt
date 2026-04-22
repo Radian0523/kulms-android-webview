@@ -9,6 +9,7 @@ class NotificationReceiver : BroadcastReceiver() {
         val id = intent.getIntExtra("id", 0)
         val title = intent.getStringExtra("title") ?: return
         val body = intent.getStringExtra("body") ?: return
-        NotificationHelper.showNotification(context, id, title, body)
+        val url = intent.getStringExtra("url") ?: ""
+        NotificationHelper.showNotification(context, id, title, body, url)
     }
 }
