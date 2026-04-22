@@ -2,23 +2,32 @@ package com.radian0523.kulms_plus_for_android.data
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.content.Intent
 import android.graphics.Bitmap
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.webkit.CookieManager
 import android.webkit.JavascriptInterface
+import android.webkit.MimeTypeMap
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import androidx.core.content.FileProvider
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import com.radian0523.kulms_plus_for_android.notification.NotificationHelper
 import org.json.JSONObject
+import java.io.File
+import java.net.HttpURLConnection
+import java.net.URL
+import java.net.URLDecoder
 
 /** セッション切れを示す例外。 */
 class SessionExpiredException : Exception("Session expired")
@@ -85,6 +94,17 @@ object WebViewManager {
             settings.useWideViewPort = true
             addJavascriptInterface(KulmsStorageBridge, "Android")
             webViewClient = KulmsWebViewClient()
+            setDownloadListener { url, _, contentDisposition, mimetype, _ ->
+                val cookie = CookieManager.getInstance().getCookie(url) ?: ""
+                CoroutineScope(Dispatchers.IO).launch {
+                    val file = downloadFileWithCookie(url, cookie, contentDisposition, mimetype)
+                    if (file != null) {
+                        withContext(Dispatchers.Main) {
+                            openFileWithViewer(file, mimetype)
+                        }
+                    }
+                }
+            }
         }
         CookieManager.getInstance().setAcceptCookie(true)
         CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true)
@@ -262,6 +282,80 @@ object WebViewManager {
                 webView.clearCache(true)
                 webView.clearHistory()
             }
+        }
+        // 一時ダウンロードファイルをクリア
+        appContext.cacheDir.listFiles()?.forEach { it.delete() }
+    }
+
+    // MARK: - File Download & Preview
+
+    private fun downloadFileWithCookie(
+        url: String,
+        cookie: String,
+        contentDisposition: String,
+        mimetype: String
+    ): File? {
+        return try {
+            val conn = URL(url).openConnection() as HttpURLConnection
+            conn.apply {
+                requestMethod = "GET"
+                if (cookie.isNotEmpty()) setRequestProperty("Cookie", cookie)
+                setRequestProperty("User-Agent", "Mozilla/5.0 (Android)")
+                connectTimeout = 30_000
+                readTimeout = 60_000
+                instanceFollowRedirects = true
+            }
+            if (conn.responseCode !in 200..299) {
+                conn.disconnect()
+                return null
+            }
+            val filename = extractFilename(contentDisposition, url, mimetype)
+            val tempFile = File(appContext.cacheDir, filename)
+            conn.inputStream.use { input -> tempFile.outputStream().use { input.copyTo(it) } }
+            conn.disconnect()
+            tempFile
+        } catch (e: Exception) {
+            Log.e(TAG, "Download failed: ${e.message}")
+            null
+        }
+    }
+
+    private fun extractFilename(contentDisposition: String, url: String, mimetype: String): String {
+        // RFC 5987: filename*=UTF-8''encoded-name
+        Regex("""filename\*=UTF-8''([^;\s]+)""", RegexOption.IGNORE_CASE)
+            .find(contentDisposition)?.groupValues?.get(1)?.let {
+                return try { URLDecoder.decode(it, "UTF-8") } catch (e: Exception) { it }
+            }
+        // 通常形式: filename="name.ext"
+        Regex("""filename="?([^";]+)"?""", RegexOption.IGNORE_CASE)
+            .find(contentDisposition)?.groupValues?.get(1)?.let { return it.trim() }
+        // URLから取得
+        val urlFilename = url.substringAfterLast('/').substringBefore('?')
+        if (urlFilename.isNotEmpty()) return urlFilename
+        // MIMEから拡張子を推測
+        val ext = MimeTypeMap.getSingleton().getExtensionFromMimeType(mimetype) ?: "bin"
+        return "download_${System.currentTimeMillis()}.$ext"
+    }
+
+    private fun openFileWithViewer(file: File, mimetype: String) {
+        val resolvedMime = mimetype.ifEmpty {
+            val ext = file.extension.lowercase()
+            MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext) ?: "application/octet-stream"
+        }
+        val uri = FileProvider.getUriForFile(appContext, "${appContext.packageName}.fileprovider", file)
+        val intent = Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(uri, resolvedMime)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        val resolved = appContext.packageManager
+            .queryIntentActivities(intent, android.content.pm.PackageManager.MATCH_DEFAULT_ONLY)
+        if (resolved.isNotEmpty()) {
+            appContext.startActivity(intent)
+        } else {
+            val chooser = Intent.createChooser(intent, "ファイルを開く")
+            chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            appContext.startActivity(chooser)
         }
     }
 
