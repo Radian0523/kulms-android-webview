@@ -6,12 +6,16 @@ import android.content.Intent
 import android.graphics.Bitmap
 import android.os.Handler
 import android.os.Looper
+import android.os.Message
 import android.util.Log
 import android.webkit.CookieManager
 import android.webkit.JavascriptInterface
 import android.webkit.MimeTypeMap
+import android.webkit.WebChromeClient
+import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import com.radian0523.kulms_plus_for_android.FileViewerActivity
 import androidx.core.content.FileProvider
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -92,8 +96,11 @@ object WebViewManager {
             settings.displayZoomControls = false
             settings.loadWithOverviewMode = true
             settings.useWideViewPort = true
+            settings.setSupportMultipleWindows(true)
+            settings.javaScriptCanOpenWindowsAutomatically = true
             addJavascriptInterface(KulmsStorageBridge, "Android")
             webViewClient = KulmsWebViewClient()
+            webChromeClient = KulmsWebChromeClient()
             setDownloadListener { url, _, contentDisposition, mimetype, _ ->
                 val cookie = CookieManager.getInstance().getCookie(url) ?: ""
                 CoroutineScope(Dispatchers.IO).launch {
@@ -346,17 +353,11 @@ object WebViewManager {
         val intent = Intent(Intent.ACTION_VIEW).apply {
             setDataAndType(uri, resolvedMime)
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        val chooser = Intent.createChooser(intent, "ファイルを開く").apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
-        val resolved = appContext.packageManager
-            .queryIntentActivities(intent, android.content.pm.PackageManager.MATCH_DEFAULT_ONLY)
-        if (resolved.isNotEmpty()) {
-            appContext.startActivity(intent)
-        } else {
-            val chooser = Intent.createChooser(intent, "ファイルを開く")
-            chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            appContext.startActivity(chooser)
-        }
+        appContext.startActivity(chooser)
     }
 
     private suspend fun waitForStableNavigation(maxSeconds: Double = 10.0) = withContext(Dispatchers.Main) {
@@ -669,9 +670,35 @@ object WebViewManager {
     // ======== WebViewClient ========
 
     private class KulmsWebViewClient : WebViewClient() {
+        override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
+            val url = request.url.toString()
+            if (url.startsWith("$BASE_URL/access/")) {
+                val intent = Intent(appContext, FileViewerActivity::class.java).apply {
+                    putExtra(FileViewerActivity.EXTRA_URL, url)
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                appContext.startActivity(intent)
+                return true
+            }
+            return false
+        }
+
         override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
             super.onPageStarted(view, url, favicon)
             isLoading = true
+        }
+
+        @Deprecated("Deprecated in Java")
+        override fun shouldOverrideUrlLoading(view: WebView, url: String): Boolean {
+            if (url.startsWith("$BASE_URL/access/")) {
+                val intent = Intent(appContext, FileViewerActivity::class.java).apply {
+                    putExtra(FileViewerActivity.EXTRA_URL, url)
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                appContext.startActivity(intent)
+                return true
+            }
+            return false
         }
 
         override fun onPageFinished(view: WebView?, url: String?) {
@@ -706,6 +733,50 @@ object WebViewManager {
                 _isLoggedIn.value = false
                 onSessionExpired?.invoke()
             }
+        }
+    }
+
+    // ======== WebChromeClient ========
+
+    /**
+     * target="_blank" リンクを FileViewerActivity で開く。
+     */
+    private class KulmsWebChromeClient : WebChromeClient() {
+        override fun onCreateWindow(
+            view: WebView,
+            isDialog: Boolean,
+            isUserGesture: Boolean,
+            resultMsg: Message?
+        ): Boolean {
+            // 一時 WebView で URL を捕捉し、FileViewerActivity に渡す
+            val tempWebView = WebView(view.context)
+            tempWebView.webViewClient = object : WebViewClient() {
+                override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
+                    val url = request.url.toString()
+                    val intent = Intent(appContext, FileViewerActivity::class.java).apply {
+                        putExtra(FileViewerActivity.EXTRA_URL, url)
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    }
+                    appContext.startActivity(intent)
+                    tempWebView.destroy()
+                    return true
+                }
+
+                @Deprecated("Deprecated in Java")
+                override fun shouldOverrideUrlLoading(view: WebView, url: String): Boolean {
+                    val intent = Intent(appContext, FileViewerActivity::class.java).apply {
+                        putExtra(FileViewerActivity.EXTRA_URL, url)
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    }
+                    appContext.startActivity(intent)
+                    tempWebView.destroy()
+                    return true
+                }
+            }
+            val transport = resultMsg?.obj as? WebView.WebViewTransport ?: return false
+            transport.webView = tempWebView
+            resultMsg.sendToTarget()
+            return true
         }
     }
 }

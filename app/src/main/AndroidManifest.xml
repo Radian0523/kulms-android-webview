@@ -14,10 +14,14 @@
         android:usesCleartextTraffic="false">
 
         <activity
+            android:name=".FileViewerActivity"
+            android:theme="@style/Theme.KULMS" />
+
+        <activity
             android:name=".MainActivity"
             android:exported="true"
             android:launchMode="singleTop"
-            android:theme="@style/Theme.KULMS">
+android:theme="@style/Theme.KULMS">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
