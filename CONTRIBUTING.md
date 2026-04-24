@@ -24,6 +24,7 @@ data/
   WebViewManager.kt      # WebView管理 + StorageBridge + ScriptInjector
 ui/
   LMSWebViewScreen.kt    # LMS表示画面
+  FileViewerActivity.kt  # PDF等のファイル表示・ダウンロード
   login/                 # ログイン画面
   theme/                 # テーマ定義
 notification/

@@ -9,6 +9,8 @@ WebView ベースで [kulms-extension](https://github.com/Radian0523/kulms-exten
 - ECS-ID / SPS-ID によるログイン（パスキー / 多要素認証対応）
 - 課題の締切通知
 - パスワードの暗号化保存（Android Keystore）
+- PDF等のファイルリンクを別画面で表示・ダウンロード（FileViewerActivity）
+- target="_blank" リンクおよび /access/ URL の自動インターセプト
 
 ## 構成
 

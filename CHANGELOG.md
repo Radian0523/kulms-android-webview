@@ -1,5 +1,16 @@
 # Changelog
 
+## 2.1.0 (2026-04-24)
+
+- FileViewerActivity 新規追加: PDF等のファイルリンクを別Activityで開く
+  - shouldInterceptRequest で Content-Type を HEAD リクエストで判定
+  - PDFなどHTML以外のファイルは自動ダウンロード→Intent.createChooser で外部アプリに渡す
+  - HTMLコンテンツはそのままWebViewで表示
+  - TopAppBar に閉じるボタンとダウンロードボタン付き
+- WebViewManager: target="_blank" 対応（onCreateWindow で一時WebView経由でURL捕捉→FileViewerActivity起動）
+- WebViewManager: /access/ URL のインターセプト（shouldOverrideUrlLoading）
+- AndroidManifest.xml に FileViewerActivity を登録
+
 ## 2.0.1 (2026-04-20)
 
 - 拡張機能の画面幅制限を撤廃し、モバイルでも全機能を表示
