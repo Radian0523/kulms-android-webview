@@ -24,11 +24,24 @@
     <string name="offset_mins_before">%1$d min before</string>
 
     <!-- Notification content -->
+    <string name="notify_new_assignment">New assignment notifications</string>
+    <string name="notif_new_assignment_title">New Assignment</string>
+    <string name="notif_new_assignment_body">\"%1$s\" (%2$s) was added</string>
     <string name="notif_title_soon">Assignment deadline approaching</string>
     <string name="notif_title_approaching">Assignment deadline is near</string>
     <string name="notif_body">\"%1$s\" (%2$s) — %3$s until deadline</string>
     <string name="notif_channel_name">Deadline reminders</string>
     <string name="notif_channel_desc">Assignment deadline notifications</string>
+
+    <!-- Settings -->
+    <string name="notifications_section">Notifications</string>
+    <string name="add_timing">Add notification timing</string>
+    <string name="settings_title">Settings</string>
+    <string name="security_section_title">About Security</string>
+    <string name="security_description">Your ECS-ID and password are sent directly to Kyoto University\'s authentication server (auth.iimc.kyoto-u.ac.jp) through the in-app WebView. Your credentials are never sent to the KULMS+ developer\'s server.\n\nIf you save your password on this device, it is protected by AES-256 encryption (managed by AndroidKeyStore).\n\nThe source code for this app is available on GitHub, so anyone can verify how credentials are handled.</string>
+    <string name="app_info_section">App Info</string>
+    <string name="version_label">Version</string>
+    <string name="source_code_label">Source Code</string>
 
     <!-- WebView toolbar -->
     <string name="logout">Log out</string>

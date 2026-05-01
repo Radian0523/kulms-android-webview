@@ -23,6 +23,8 @@ object NotificationHelper {
     private const val CHANNEL_ID = "kulms_deadline"
     private const val PREFS_NAME = "kulms_settings"
     private const val OFFSETS_KEY = "notificationOffsets"
+    private const val NEW_ASSIGNMENT_KEY = "newAssignmentNotification"
+    private const val KNOWN_KEYS_KEY = "knownAssignmentKeys"
     private val DEFAULT_OFFSETS = setOf("1440", "60") // 24h, 1h (minutes)
 
     fun createChannel(context: Context) {
@@ -46,6 +48,33 @@ object NotificationHelper {
         val offsets = set.mapNotNull { it.toIntOrNull() }
         return if (offsets.isEmpty()) DEFAULT_OFFSETS.map { it.toInt() }.sortedDescending()
         else offsets.sortedDescending()
+    }
+
+    fun saveNotificationOffsets(context: Context, offsets: List<Int>) {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit().putStringSet(OFFSETS_KEY, offsets.map { it.toString() }.toSet()).apply()
+    }
+
+    // MARK: - New Assignment Notification
+
+    fun getNewAssignmentNotification(context: Context): Boolean {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return prefs.getBoolean(NEW_ASSIGNMENT_KEY, true)
+    }
+
+    fun saveNewAssignmentNotification(context: Context, enabled: Boolean) {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit().putBoolean(NEW_ASSIGNMENT_KEY, enabled).apply()
+    }
+
+    private fun getKnownAssignmentKeys(context: Context): Set<String> {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return prefs.getStringSet(KNOWN_KEYS_KEY, null) ?: emptySet()
+    }
+
+    private fun saveKnownAssignmentKeys(context: Context, keys: Set<String>) {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit().putStringSet(KNOWN_KEYS_KEY, keys).apply()
     }
 
     fun formatOffsetLabel(minutes: Int, context: Context? = null): String {
@@ -85,10 +114,13 @@ object NotificationHelper {
 
         val now = System.currentTimeMillis()
         val offsets = getNotificationOffsets(context)
+        val notifyNew = getNewAssignmentNotification(context)
+        val knownKeys = getKnownAssignmentKeys(context)
 
         data class Candidate(val id: Int, val title: String, val body: String, val triggerAt: Long, val url: String)
 
         val candidates = mutableListOf<Candidate>()
+        val currentKeys = mutableSetOf<String>()
 
         for (i in 0 until assignments.length()) {
             val obj = assignments.optJSONObject(i) ?: continue
@@ -123,6 +155,19 @@ object NotificationHelper {
             val courseName = obj.optString("courseName", "")
             val url = "https://lms.gakusei.kyoto-u.ac.jp/portal/site/$courseId"
 
+            currentKeys.add(compositeKey)
+
+            // 新着課題の即時通知
+            if (notifyNew && knownKeys.isNotEmpty() && compositeKey !in knownKeys) {
+                showNotification(
+                    context,
+                    id = "kulms-new-$compositeKey".hashCode(),
+                    title = context.getString(R.string.notif_new_assignment_title),
+                    body = context.getString(R.string.notif_new_assignment_body, name, courseName),
+                    url = url
+                )
+            }
+
             for (offset in offsets) {
                 val triggerAt = deadline - offset.toLong() * 60 * 1000
                 if (triggerAt <= now) continue
@@ -146,6 +191,11 @@ object NotificationHelper {
                     )
                 )
             }
+        }
+
+        // 既知の課題キーを更新
+        if (currentKeys.isNotEmpty()) {
+            saveKnownAssignmentKeys(context, currentKeys)
         }
 
         // 最も近い通知から順にスケジュール

@@ -7,7 +7,9 @@ WebView ベースで [kulms-extension](https://github.com/Radian0523/kulms-exten
 
 - LMS の WebView 表示 + 拡張機能スクリプト注入
 - ECS-ID / SPS-ID によるログイン（パスキー / 多要素認証対応）
-- 課題の締切通知
+- 課題の締切通知（タイミングカスタマイズ対応）
+- 新着課題の即時通知
+- 設定画面（通知カスタマイズ、セキュリティ説明、アプリ情報）
 - パスワードの暗号化保存（Android Keystore）
 - PDF等のファイルリンクを別画面で表示・ダウンロード（FileViewerActivity）
 - target="_blank" リンクおよび /access/ URL の自動インターセプト

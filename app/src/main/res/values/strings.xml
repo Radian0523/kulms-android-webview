@@ -26,11 +26,24 @@
     <string name="offset_mins_before">%1$d分前</string>
 
     <!-- Notification content -->
+    <string name="notify_new_assignment">新着課題の通知</string>
+    <string name="notif_new_assignment_title">新しい課題</string>
+    <string name="notif_new_assignment_body">「%1$s」（%2$s）が追加されました</string>
     <string name="notif_title_soon">課題の締切まもなく</string>
     <string name="notif_title_approaching">課題の締切が近づいています</string>
     <string name="notif_body">「%1$s」（%2$s）の締切まで%3$s</string>
     <string name="notif_channel_name">締切リマインド</string>
     <string name="notif_channel_desc">課題の締切通知</string>
+
+    <!-- Settings -->
+    <string name="notifications_section">通知</string>
+    <string name="add_timing">通知タイミングを追加</string>
+    <string name="settings_title">設定</string>
+    <string name="security_section_title">セキュリティについて</string>
+    <string name="security_description">ECS-ID とパスワードは、アプリ内の WebView を通じて京都大学の認証サーバー（auth.iimc.kyoto-u.ac.jp）に直接送信されます。KULMS+ の開発者のサーバーに認証情報が送信されることはありません。\n\nパスワードを端末に保存する場合、AES-256 暗号化（AndroidKeyStore 管理）により保護されます。\n\nこのアプリのソースコードは GitHub で公開しており、認証情報の取り扱いをどなたでもご確認いただけます。</string>
+    <string name="app_info_section">アプリ情報</string>
+    <string name="version_label">バージョン</string>
+    <string name="source_code_label">ソースコード</string>
 
     <!-- WebView toolbar -->
     <string name="logout">ログアウト</string>
