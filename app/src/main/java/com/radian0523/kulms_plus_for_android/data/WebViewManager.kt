@@ -618,8 +618,8 @@ object WebViewManager {
             // シムは全ページで注入（SSO 等でもストレージブリッジが安全に動作）
             evaluateJS(webView, shimJS)
 
-            // アプリバージョン埋め込み
-            evaluateJS(webView, "window.__kulmsAppVersion = '" + appVersion + "';")
+            // アプリバージョン・プラットフォーム埋め込み
+            evaluateJS(webView, "window.__kulmsAppVersion = '" + appVersion + "'; window.__kulmsPlatform = 'android';")
 
             // LMS ホストのみ拡張スクリプトを注入
             if (url.startsWith(BASE_URL)) {
