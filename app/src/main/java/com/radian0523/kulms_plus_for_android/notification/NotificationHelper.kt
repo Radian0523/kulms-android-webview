@@ -153,7 +153,9 @@ object NotificationHelper {
             }
 
             val courseName = obj.optString("courseName", "")
-            val url = "https://lms.gakusei.kyoto-u.ac.jp/portal/site/$courseId"
+            val url = obj.optString("url", "").ifEmpty {
+                "https://lms.gakusei.kyoto-u.ac.jp/portal/site/$courseId"
+            }
 
             currentKeys.add(compositeKey)
 
