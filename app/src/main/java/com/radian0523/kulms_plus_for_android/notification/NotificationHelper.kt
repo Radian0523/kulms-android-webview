@@ -91,6 +91,8 @@ object NotificationHelper {
         }
     }
 
+    private const val SCHEDULED_IDS_KEY = "scheduledAlarmIds"
+
     /**
      * 拡張機能から受け取った課題 JSON から通知をスケジュールする。
      *
@@ -109,8 +111,7 @@ object NotificationHelper {
             ) return
         }
 
-        val manager = NotificationManagerCompat.from(context)
-        manager.cancelAll()
+        // cancelAll() は表示済み通知を削除するが、まだ読んでいない通知が消えるため使わない
 
         val now = System.currentTimeMillis()
         val offsets = getNotificationOffsets(context)
@@ -203,11 +204,50 @@ object NotificationHelper {
         // 最も近い通知から順にスケジュール
         candidates.sortBy { it.triggerAt }
 
-        Log.d(TAG, "scheduleFromExtensionData: scheduling ${candidates.size} notifications")
+        val newIds = candidates.map { it.id }.toSet()
 
+        // 新しいアラームを先に登録（同一 ID は FLAG_UPDATE_CURRENT で上書き）
         for (candidate in candidates) {
             scheduleAlarm(context, candidate.id, candidate.title, candidate.body, candidate.triggerAt, candidate.url)
         }
+
+        // 今回のバッチに含まれない古いアラームをキャンセル
+        val previousIds = getScheduledAlarmIds(context)
+        val staleIds = previousIds - newIds
+        if (staleIds.isNotEmpty()) {
+            val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+            for (id in staleIds) {
+                val intent = Intent(context, NotificationReceiver::class.java)
+                val pi = PendingIntent.getBroadcast(
+                    context, id, intent,
+                    PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE
+                )
+                if (pi != null) {
+                    alarmManager.cancel(pi)
+                    pi.cancel()
+                }
+            }
+            Log.d(TAG, "cancelled ${staleIds.size} stale alarms")
+        }
+
+        // 現在のアラーム ID を保存（再起動時の再登録用）
+        saveScheduledAlarmIds(context, newIds)
+
+        Log.d(TAG, "scheduleFromExtensionData: scheduled ${candidates.size} alarms, removed ${staleIds.size} stale")
+
+        // App Shortcuts も更新（BootReceiver 経由でも反映されるように）
+        ShortcutHelper.updateShortcuts(context, assignments, checkedState)
+    }
+
+    private fun getScheduledAlarmIds(context: Context): Set<Int> {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return prefs.getStringSet(SCHEDULED_IDS_KEY, null)
+            ?.mapNotNull { it.toIntOrNull() }?.toSet() ?: emptySet()
+    }
+
+    private fun saveScheduledAlarmIds(context: Context, ids: Set<Int>) {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit().putStringSet(SCHEDULED_IDS_KEY, ids.map { it.toString() }.toSet()).apply()
     }
 
     private fun scheduleAlarm(
@@ -230,13 +270,25 @@ object NotificationHelper {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        try {
-            alarmManager.setExactAndAllowWhileIdle(
-                AlarmManager.RTC_WAKEUP, triggerAt, pendingIntent
-            )
-        } catch (_: SecurityException) {
-            // Exact alarm permission not granted, fall back to inexact
+        // Android 12+ では SCHEDULE_EXACT_ALARM 権限が必要
+        val canExact = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            alarmManager.canScheduleExactAlarms()
+        } else {
+            true
+        }
+
+        if (canExact) {
+            try {
+                alarmManager.setExactAndAllowWhileIdle(
+                    AlarmManager.RTC_WAKEUP, triggerAt, pendingIntent
+                )
+            } catch (_: SecurityException) {
+                alarmManager.set(AlarmManager.RTC_WAKEUP, triggerAt, pendingIntent)
+            }
+        } else {
+            // Exact alarm 権限なし → inexact fallback
             alarmManager.set(AlarmManager.RTC_WAKEUP, triggerAt, pendingIntent)
+            Log.w(TAG, "Exact alarm not permitted, using inexact for id=$id")
         }
     }
 

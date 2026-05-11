@@ -35,6 +35,10 @@
     <string name="notif_channel_name">締切リマインド</string>
     <string name="notif_channel_desc">課題の締切通知</string>
 
+    <!-- App Shortcuts -->
+    <string name="shortcut_deadline_format">%1$s - 締切: %2$s</string>
+    <string name="shortcut_deadline_label">締切: %1$s</string>
+
     <!-- Settings -->
     <string name="notifications_section">通知</string>
     <string name="add_timing">通知タイミングを追加</string>

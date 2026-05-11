@@ -33,6 +33,10 @@
     <string name="notif_channel_name">Deadline reminders</string>
     <string name="notif_channel_desc">Assignment deadline notifications</string>
 
+    <!-- App Shortcuts -->
+    <string name="shortcut_deadline_format">%1$s - Due: %2$s</string>
+    <string name="shortcut_deadline_label">Due: %1$s</string>
+
     <!-- Settings -->
     <string name="notifications_section">Notifications</string>
     <string name="add_timing">Add notification timing</string>

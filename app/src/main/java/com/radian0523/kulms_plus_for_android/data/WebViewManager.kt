@@ -27,6 +27,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import com.radian0523.kulms_plus_for_android.notification.NotificationHelper
+import com.radian0523.kulms_plus_for_android.notification.ShortcutHelper
 import org.json.JSONObject
 import java.io.File
 import java.net.HttpURLConnection
@@ -438,7 +439,7 @@ object WebViewManager {
             saveStore(store)
             sendCallback(callbackId, JSONObject())
 
-            // 課題データ更新時に通知をスケジュール
+            // 課題データ更新時に通知をスケジュール & ショートカットを更新
             if (items.has("kulms-assignments") || items.has("kulms-checked-assignments")) {
                 try {
                     val assignmentsData = store.optJSONObject("kulms-assignments")
@@ -447,6 +448,7 @@ object WebViewManager {
                         if (assignments != null) {
                             val checked = store.optJSONObject("kulms-checked-assignments") ?: JSONObject()
                             NotificationHelper.scheduleFromExtensionData(appContext, assignments, checked)
+                            ShortcutHelper.updateShortcuts(appContext, assignments, checked)
                         }
                     }
                 } catch (e: Exception) {

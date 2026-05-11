@@ -9,6 +9,8 @@ WebView ベースで [kulms-extension](https://github.com/Radian0523/kulms-exten
 - ECS-ID / SPS-ID によるログイン（パスキー / 多要素認証対応）
 - 課題の締切通知（タイミングカスタマイズ対応）
 - 新着課題の即時通知
+- ホーム画面アプリショートカット（アイコン長押しで課題表示）
+- 端末再起動後の通知自動再スケジュール
 - 設定画面（通知カスタマイズ、セキュリティ説明、アプリ情報）
 - パスワードの暗号化保存（Android Keystore）
 - PDF等のファイルリンクを別画面で表示・ダウンロード（FileViewerActivity）
