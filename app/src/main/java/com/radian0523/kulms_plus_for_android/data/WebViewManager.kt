@@ -560,7 +560,7 @@ object WebViewManager {
 
         private val scriptNames = listOf(
             "src/settings.js", "src/assignments.js", "src/submit-detect.js",
-            "src/tree-view.js", "src/course-name.js", "src/course-click.js",
+            "src/file-drop.js", "src/tree-view.js", "src/course-name.js", "src/course-click.js",
             "src/tool-visibility.js",
             "kulms-textbook-handler.js", "src/textbooks.js",
             "src/sidebar-resize.js", "src/top-favbar.js"
