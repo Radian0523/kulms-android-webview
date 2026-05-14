@@ -42,10 +42,21 @@
     <string name="add_timing">Add notification timing</string>
     <string name="settings_title">Settings</string>
     <string name="security_section_title">About Security</string>
-    <string name="security_description">Your ECS-ID and password are sent directly to Kyoto University\'s authentication server (auth.iimc.kyoto-u.ac.jp) through the in-app WebView. Your credentials are never sent to the KULMS+ developer\'s server.\n\nIf you save your password on this device, it is protected by AES-256 encryption (managed by AndroidKeyStore).\n\nThe source code for this app is available on GitHub, so anyone can verify how credentials are handled.</string>
+    <string name="security_description">Your ECS-ID and password are sent directly to Kyoto University\'s authentication server (auth.iimc.kyoto-u.ac.jp) through the in-app WebView. Your credentials are never sent to the KULMS+ developer\'s server.\n\nIf you save your password on this device, it is protected by AES-256 encryption (managed by AndroidKeyStore). Your TOTP secret key is also encrypted and stored in the same way.\n\nNote: Storing both your password and TOTP secret on the same device means both authentication factors are on one device. For maximum security, consider using a separate authenticator app (e.g. Google Authenticator) on another device.\n\nThe source code for this app is available on GitHub, so anyone can verify how credentials are handled.</string>
     <string name="app_info_section">App Info</string>
     <string name="version_label">Version</string>
     <string name="source_code_label">Source Code</string>
+
+    <!-- TOTP -->
+    <string name="totp_section_title">Two-Factor Auth (TOTP)</string>
+    <string name="totp_configured">Configured</string>
+    <string name="totp_delete">Delete</string>
+    <string name="totp_save">Save</string>
+    <string name="totp_description">Set a TOTP secret key to auto-fill OTP codes during login.</string>
+    <string name="totp_placeholder">Base32 secret key</string>
+    <string name="totp_invalid_title">Invalid Secret</string>
+    <string name="totp_invalid_message">Please enter a valid Base32 secret key.</string>
+    <string name="close">Close</string>
 
     <!-- WebView toolbar -->
     <string name="logout">Log out</string>

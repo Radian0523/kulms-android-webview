@@ -11,11 +11,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
@@ -45,8 +48,10 @@ import androidx.compose.ui.platform.LocalAutofillTree
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -54,6 +59,7 @@ import androidx.compose.ui.unit.dp
 import com.radian0523.kulms_plus_for_android.R
 import com.radian0523.kulms_plus_for_android.data.CredentialStore
 import com.radian0523.kulms_plus_for_android.data.LoginResult
+import com.radian0523.kulms_plus_for_android.data.TOTPGenerator
 import com.radian0523.kulms_plus_for_android.data.WebViewManager
 import kotlinx.coroutines.launch
 
@@ -63,7 +69,9 @@ import kotlinx.coroutines.launch
 @OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
 @Composable
 fun CredentialLoginScreen(
-    onRequireWebViewLogin: () -> Unit
+    onRequireWebViewLogin: () -> Unit,
+    didAutoLogin: Boolean,
+    onDidAutoLogin: (Boolean) -> Unit
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -77,6 +85,11 @@ fun CredentialLoginScreen(
     var passwordVisible by remember { mutableStateOf(false) }
     var isSubmitting by remember { mutableStateOf(false) }
     var errorText by remember { mutableStateOf<String?>(null) }
+
+    // TOTP settings
+    var totpSecret by remember { mutableStateOf("") }
+    var hasTotpSecret by remember { mutableStateOf(CredentialStore.loadTotpSecret(context) != null) }
+    var showTotpInvalidAlert by remember { mutableStateOf(false) }
 
     val usernameAutofillNode = remember {
         AutofillNode(
@@ -95,26 +108,30 @@ fun CredentialLoginScreen(
 
     // 起動時に保存済み認証情報を読み込み、自動ログインを試みる
     LaunchedEffect(Unit) {
-        val stored = CredentialStore.load(context)
-        if (stored != null) {
-            username = stored.first
-            password = stored.second
-            performLogin(
-                context = context,
-                username = stored.first,
-                password = stored.second,
-                savePassword = true,
-                onProgress = { isSubmitting = it },
-                onError = { errorText = it },
-                onRequireWebViewLogin = onRequireWebViewLogin
-            )
+        if (!didAutoLogin) {
+            onDidAutoLogin(true)
+            val stored = CredentialStore.load(context)
+            if (stored != null) {
+                username = stored.first
+                password = stored.second
+                performLogin(
+                    context = context,
+                    username = stored.first,
+                    password = stored.second,
+                    savePassword = true,
+                    onProgress = { isSubmitting = it },
+                    onError = { errorText = it },
+                    onRequireWebViewLogin = onRequireWebViewLogin
+                )
+            }
         }
     }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = 24.dp),
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 24.dp, vertical = 60.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -272,6 +289,102 @@ fun CredentialLoginScreen(
             stringResource(R.string.login_browser_desc),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+        HorizontalDivider()
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // TOTP settings
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.Start
+        ) {
+            Text(
+                stringResource(R.string.totp_section_title),
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+
+            if (hasTotpSecret) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        stringResource(R.string.totp_configured),
+                        color = MaterialTheme.colorScheme.primary,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    TextButton(onClick = {
+                        CredentialStore.clearTotpSecret(context)
+                        hasTotpSecret = false
+                        totpSecret = ""
+                    }) {
+                        Text(
+                            stringResource(R.string.totp_delete),
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+                }
+            } else {
+                Text(
+                    stringResource(R.string.totp_description),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedTextField(
+                        value = totpSecret,
+                        onValueChange = { totpSecret = it },
+                        label = { Text(stringResource(R.string.totp_placeholder)) },
+                        singleLine = true,
+                        textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace),
+                        keyboardOptions = KeyboardOptions(
+                            capitalization = KeyboardCapitalization.Characters,
+                            autoCorrectEnabled = false
+                        ),
+                        modifier = Modifier.weight(1f)
+                    )
+                    Button(
+                        onClick = {
+                            val cleaned = totpSecret
+                                .replace(" ", "")
+                                .replace("-", "")
+                            if (TOTPGenerator.isValidBase32(cleaned)) {
+                                CredentialStore.saveTotpSecret(context, cleaned)
+                                hasTotpSecret = true
+                                totpSecret = ""
+                            } else {
+                                showTotpInvalidAlert = true
+                            }
+                        },
+                        enabled = totpSecret.trim().isNotEmpty()
+                    ) {
+                        Text(stringResource(R.string.totp_save))
+                    }
+                }
+            }
+        }
+    }
+
+    if (showTotpInvalidAlert) {
+        AlertDialog(
+            onDismissRequest = { showTotpInvalidAlert = false },
+            title = { Text(stringResource(R.string.totp_invalid_title)) },
+            text = { Text(stringResource(R.string.totp_invalid_message)) },
+            confirmButton = {
+                TextButton(onClick = { showTotpInvalidAlert = false }) {
+                    Text(stringResource(R.string.close))
+                }
+            }
         )
     }
 }

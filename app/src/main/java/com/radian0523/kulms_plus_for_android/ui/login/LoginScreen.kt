@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -33,6 +34,7 @@ import com.radian0523.kulms_plus_for_android.data.WebViewManager
 @Composable
 fun LoginScreen() {
     var useWebView by remember { mutableStateOf(false) }
+    var didAutoLogin by remember { mutableStateOf(false) }
     val isLoggedIn by WebViewManager.isLoggedIn.collectAsState()
 
     LaunchedEffect(isLoggedIn) {
@@ -47,7 +49,9 @@ fun LoginScreen() {
         )
     } else {
         CredentialLoginScreen(
-            onRequireWebViewLogin = { useWebView = true }
+            onRequireWebViewLogin = { useWebView = true },
+            didAutoLogin = didAutoLogin,
+            onDidAutoLogin = { didAutoLogin = it }
         )
     }
 }
@@ -68,7 +72,7 @@ private fun WebViewLoginPanel(
         }
     }
 
-    Column(modifier = Modifier.fillMaxSize()) {
+    Column(modifier = Modifier.fillMaxSize().navigationBarsPadding()) {
         AndroidView(
             modifier = Modifier
                 .fillMaxWidth()

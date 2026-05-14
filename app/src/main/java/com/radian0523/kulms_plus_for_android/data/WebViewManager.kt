@@ -80,6 +80,9 @@ object WebViewManager {
     /** ポータル到達コールバック（WebView ログイン用自動遷移）。 */
     var onPortalReached: (() -> Unit)? = null
 
+    /** WebView モードで TOTP を1回だけ自動入力するためのフラグ。 */
+    private var didInjectTotpInWebView = false
+
     fun init(context: Context) {
         if (initialized) return
         appContext = context.applicationContext
@@ -133,9 +136,11 @@ object WebViewManager {
     // ---- Login ----
 
     suspend fun loginWithCredentials(username: String, password: String): LoginResult {
+        didInjectTotpInWebView = false
         val result = withContext(Dispatchers.Main) {
             val deferred = CompletableDeferred<LoginResult>()
             var credentialsInjected = false
+            var totpInjected = false
 
             val listener: (String) -> Unit = listener@{ url ->
                 if (deferred.isCompleted) return@listener
@@ -151,14 +156,29 @@ object WebViewManager {
                     return@listener
                 }
 
-                val twoFactorPaths = listOf(
-                    "/authselect.php", "/u2flogin.cgi",
-                    "/otplogin.cgi", "/motplogin.cgi"
-                )
-                if (url.contains(IIMC_HOST) && twoFactorPaths.any { url.contains(it) }) {
-                    Log.d(TAG, "loginWithCredentials: 2FA required → WebView fallback")
-                    deferred.complete(LoginResult.OtpRequired)
-                    return@listener
+                if (url.contains(IIMC_HOST)) {
+                    // TOTP 自動入力: /otplogin.cgi
+                    if (url.contains("/otplogin.cgi")) {
+                        val secret = CredentialStore.loadTotpSecret(appContext)
+                        val code = secret?.let { TOTPGenerator.generate(it) }
+                        if (code != null) {
+                            Log.d(TAG, "loginWithCredentials: TOTP auto-fill on otplogin.cgi")
+                            injectTotpCode(code)
+                            return@listener
+                        }
+                        Log.d(TAG, "loginWithCredentials: OTP required (no TOTP secret)")
+                        deferred.complete(LoginResult.OtpRequired)
+                        return@listener
+                    }
+
+                    val otherTwoFactorPaths = listOf(
+                        "/authselect.php", "/u2flogin.cgi", "/motplogin.cgi"
+                    )
+                    if (otherTwoFactorPaths.any { url.contains(it) }) {
+                        Log.d(TAG, "loginWithCredentials: 2FA required → WebView fallback")
+                        deferred.complete(LoginResult.OtpRequired)
+                        return@listener
+                    }
                 }
 
                 if (url.contains(IIMC_HOST) && url.contains("/login.cgi")) {
@@ -170,6 +190,17 @@ object WebViewManager {
                             if (deferred.isCompleted) return@checkLoginCgiState
                             when (state) {
                                 is CgiState.Otp -> {
+                                    // login.cgi 上の OTP フォーム: TOTP があれば自動入力
+                                    if (!totpInjected) {
+                                        val secret = CredentialStore.loadTotpSecret(appContext)
+                                        val code = secret?.let { TOTPGenerator.generate(it) }
+                                        if (code != null) {
+                                            totpInjected = true
+                                            Log.d(TAG, "loginWithCredentials: TOTP auto-fill on login.cgi OTP")
+                                            injectTotpCode(code)
+                                            return@checkLoginCgiState
+                                        }
+                                    }
                                     Log.d(TAG, "loginWithCredentials: OTP required")
                                     deferred.complete(LoginResult.OtpRequired)
                                 }
@@ -225,6 +256,33 @@ object WebViewManager {
             })();
         """.trimIndent()
         webView.evaluateJavascript(js, null)
+    }
+
+    private fun injectTotpCode(code: String, retries: Int = 3) {
+        val js = """
+            (function() {
+                try {
+                    var p = document.getElementById('password_input');
+                    var f = document.getElementById('login');
+                    if (p && f) {
+                        p.value = '$code';
+                        p.dispatchEvent(new Event('input', {bubbles: true}));
+                        f.submit();
+                        return 'ok';
+                    }
+                    return 'not_ready';
+                } catch (e) {
+                    return 'error';
+                }
+            })();
+        """.trimIndent()
+        webView.evaluateJavascript(js) { result ->
+            val value = result?.trim()?.removeSurrounding("\"") ?: ""
+            if (value == "not_ready" && retries > 0) {
+                Log.d(TAG, "injectTotpCode: DOM not ready, retrying ($retries left)")
+                mainHandler.postDelayed({ injectTotpCode(code, retries - 1) }, 300)
+            }
+        }
     }
 
     private sealed class CgiState {
@@ -713,13 +771,41 @@ object WebViewManager {
             }
 
             // ログイン中の URL 通知
+            val wasInLoginFlow = loginNavigationListeners.isNotEmpty()
             if (url != null) {
                 val listeners = ArrayList(loginNavigationListeners)
                 for (l in listeners) l(url)
             }
 
-            // ポータル到達自動検知（credential login 中以外）
-            if (loginNavigationListeners.isEmpty() && url != null) {
+            // credential login フロー中はここで終了（ポータル検知・TOTP注入を二重実行しない）
+            if (wasInLoginFlow) return
+
+            // WebView モード TOTP 自動入力（1回のみ）
+            if (!didInjectTotpInWebView && url != null && url.contains(IIMC_HOST)) {
+                val isTotpPage = url.contains("/otplogin.cgi") ||
+                    url.contains("/login.cgi")
+                if (isTotpPage) {
+                    val secret = CredentialStore.loadTotpSecret(appContext)
+                    val code = secret?.let { TOTPGenerator.generate(it) }
+                    if (code != null) {
+                        didInjectTotpInWebView = true
+                        Log.d(TAG, "onPageFinished: WebView mode TOTP auto-fill")
+                        if (url.contains("/otplogin.cgi")) {
+                            injectTotpCode(code)
+                        } else {
+                            // login.cgi: OTP フォームか確認してから注入
+                            checkLoginCgiState { state ->
+                                if (state is CgiState.Otp) {
+                                    injectTotpCode(code)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // ポータル到達自動検知
+            if (url != null) {
                 val isPortalPage = url.startsWith("$BASE_URL/portal")
                     && !url.contains("/login")
                     && !url.contains("/relogin")

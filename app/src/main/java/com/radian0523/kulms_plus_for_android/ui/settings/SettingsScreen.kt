@@ -11,7 +11,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -19,6 +21,9 @@ import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -38,9 +43,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.radian0523.kulms_plus_for_android.R
+import com.radian0523.kulms_plus_for_android.data.CredentialStore
+import com.radian0523.kulms_plus_for_android.data.TOTPGenerator
 import com.radian0523.kulms_plus_for_android.notification.NotificationHelper
 
 private const val GITHUB_URL = "https://github.com/Radian0523/kulms-android-webview"
@@ -60,6 +68,9 @@ fun SettingsScreen(onBack: () -> Unit, onLogout: () -> Unit) {
     var notifyNewAssignment by remember { mutableStateOf(NotificationHelper.getNewAssignmentNotification(context)) }
     var showAddDialog by remember { mutableStateOf(false) }
     var showLogoutConfirm by remember { mutableStateOf(false) }
+    var totpSecret by remember { mutableStateOf("") }
+    var hasTotpSecret by remember { mutableStateOf(CredentialStore.loadTotpSecret(context) != null) }
+    var showTotpInvalidAlert by remember { mutableStateOf(false) }
 
     val availablePresets = PRESET_OFFSETS.filter { it !in offsets }
 
@@ -150,6 +161,76 @@ fun SettingsScreen(onBack: () -> Unit, onLogout: () -> Unit) {
             Spacer(modifier = Modifier.height(8.dp))
             HorizontalDivider()
 
+            // TOTP section
+            SectionHeader(stringResource(R.string.totp_section_title))
+
+            if (hasTotpSecret) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        stringResource(R.string.totp_configured),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.weight(1f))
+                    TextButton(onClick = {
+                        CredentialStore.clearTotpSecret(context)
+                        hasTotpSecret = false
+                        totpSecret = ""
+                    }) {
+                        Text(
+                            stringResource(R.string.totp_delete),
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+                }
+            } else {
+                Text(
+                    text = stringResource(R.string.totp_description),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    OutlinedTextField(
+                        value = totpSecret,
+                        onValueChange = { totpSecret = it },
+                        label = { Text(stringResource(R.string.totp_placeholder)) },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters),
+                        modifier = Modifier.weight(1f)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Button(
+                        onClick = {
+                            val cleaned = totpSecret.replace(" ", "").replace("-", "")
+                            if (TOTPGenerator.isValidBase32(cleaned)) {
+                                CredentialStore.saveTotpSecret(context, cleaned)
+                                hasTotpSecret = true
+                                totpSecret = ""
+                            } else {
+                                showTotpInvalidAlert = true
+                            }
+                        },
+                        enabled = totpSecret.isNotBlank()
+                    ) {
+                        Text(stringResource(R.string.totp_save))
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+            HorizontalDivider()
+
             // Security section
             SectionHeader(stringResource(R.string.security_section_title))
             Text(
@@ -221,6 +302,20 @@ fun SettingsScreen(onBack: () -> Unit, onLogout: () -> Unit) {
             confirmButton = {},
             dismissButton = {
                 TextButton(onClick = { showAddDialog = false }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
+        )
+    }
+
+    // TOTP invalid alert
+    if (showTotpInvalidAlert) {
+        AlertDialog(
+            onDismissRequest = { showTotpInvalidAlert = false },
+            title = { Text(stringResource(R.string.totp_invalid_title)) },
+            text = { Text(stringResource(R.string.totp_invalid_message)) },
+            confirmButton = {
+                TextButton(onClick = { showTotpInvalidAlert = false }) {
                     Text(stringResource(R.string.cancel))
                 }
             }
