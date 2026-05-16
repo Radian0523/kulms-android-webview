@@ -15,11 +15,13 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -46,8 +48,11 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.radian0523.kulms_plus_for_android.R
 import com.radian0523.kulms_plus_for_android.data.CredentialStore
+import com.radian0523.kulms_plus_for_android.ui.QRCodeScannerScreen
 import com.radian0523.kulms_plus_for_android.data.TOTPGenerator
 import com.radian0523.kulms_plus_for_android.notification.NotificationHelper
 
@@ -71,6 +76,7 @@ fun SettingsScreen(onBack: () -> Unit, onLogout: () -> Unit) {
     var totpSecret by remember { mutableStateOf("") }
     var hasTotpSecret by remember { mutableStateOf(CredentialStore.loadTotpSecret(context) != null) }
     var showTotpInvalidAlert by remember { mutableStateOf(false) }
+    var showQRScanner by remember { mutableStateOf(false) }
 
     val availablePresets = PRESET_OFFSETS.filter { it !in offsets }
 
@@ -226,6 +232,20 @@ fun SettingsScreen(onBack: () -> Unit, onLogout: () -> Unit) {
                         Text(stringResource(R.string.totp_save))
                     }
                 }
+                TextButton(
+                    onClick = { showQRScanner = true },
+                    modifier = Modifier.padding(horizontal = 8.dp)
+                ) {
+                    Icon(
+                        Icons.Default.QrCodeScanner,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Text(
+                        stringResource(R.string.totp_scan_qr),
+                        modifier = Modifier.padding(start = 4.dp)
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -306,6 +326,23 @@ fun SettingsScreen(onBack: () -> Unit, onLogout: () -> Unit) {
                 }
             }
         )
+    }
+
+    // QR Scanner
+    if (showQRScanner) {
+        Dialog(
+            onDismissRequest = { showQRScanner = false },
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            QRCodeScannerScreen(
+                onSecretFound = { secret ->
+                    CredentialStore.saveTotpSecret(context, secret)
+                    hasTotpSecret = true
+                    totpSecret = ""
+                },
+                onBack = { showQRScanner = false }
+            )
+        }
     }
 
     // TOTP invalid alert

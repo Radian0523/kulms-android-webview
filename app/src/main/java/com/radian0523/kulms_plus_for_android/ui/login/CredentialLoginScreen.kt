@@ -1,6 +1,7 @@
 package com.radian0523.kulms_plus_for_android.ui.login
 
 import android.content.Context
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,10 +13,13 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.AlertDialog
@@ -30,8 +34,10 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -56,8 +62,11 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.radian0523.kulms_plus_for_android.R
 import com.radian0523.kulms_plus_for_android.data.CredentialStore
+import com.radian0523.kulms_plus_for_android.ui.QRCodeScannerScreen
 import com.radian0523.kulms_plus_for_android.data.LoginResult
 import com.radian0523.kulms_plus_for_android.data.TOTPGenerator
 import com.radian0523.kulms_plus_for_android.data.WebViewManager
@@ -90,6 +99,13 @@ fun CredentialLoginScreen(
     var totpSecret by remember { mutableStateOf("") }
     var hasTotpSecret by remember { mutableStateOf(CredentialStore.loadTotpSecret(context) != null) }
     var showTotpInvalidAlert by remember { mutableStateOf(false) }
+    var showQRScanner by remember { mutableStateOf(false) }
+
+    // TOTP debug display
+    var debugTotpCode by remember { mutableStateOf<String?>(null) }
+    var debugTotpSecret by remember { mutableStateOf<String?>(null) }
+    var totpSecondsRemaining by remember { mutableIntStateOf(0) }
+    var showDebugTotp by remember { mutableStateOf(false) }
 
     val usernameAutofillNode = remember {
         AutofillNode(
@@ -123,6 +139,21 @@ fun CredentialLoginScreen(
                     onError = { errorText = it },
                     onRequireWebViewLogin = onRequireWebViewLogin
                 )
+            }
+        }
+    }
+
+    // TOTP debug: 1秒ごとにコードとカウントダウンを更新
+    if (showDebugTotp) {
+        LaunchedEffect(showDebugTotp) {
+            while (true) {
+                val secret = CredentialStore.loadTotpSecret(context)
+                if (secret != null) {
+                    debugTotpSecret = secret
+                    debugTotpCode = TOTPGenerator.generate(secret)
+                    totpSecondsRemaining = 30 - ((System.currentTimeMillis() / 1000) % 30).toInt()
+                }
+                kotlinx.coroutines.delay(1000L)
             }
         }
     }
@@ -322,12 +353,70 @@ fun CredentialLoginScreen(
                         CredentialStore.clearTotpSecret(context)
                         hasTotpSecret = false
                         totpSecret = ""
+                        debugTotpCode = null
+                        debugTotpSecret = null
+                        showDebugTotp = false
                     }) {
                         Text(
                             stringResource(R.string.totp_delete),
                             color = MaterialTheme.colorScheme.error
                         )
                     }
+                }
+
+                // Debug TOTP display
+                if (showDebugTotp && debugTotpCode != null) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(
+                                MaterialTheme.colorScheme.surfaceVariant,
+                                RoundedCornerShape(8.dp)
+                            )
+                            .padding(8.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.Bottom,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(
+                                debugTotpCode ?: "",
+                                style = MaterialTheme.typography.headlineSmall,
+                                fontFamily = FontFamily.Monospace,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Text(
+                                "(${totpSecondsRemaining}s)",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        if (debugTotpSecret != null) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            SelectionContainer {
+                                Text(
+                                    "Secret: ${debugTotpSecret}",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontFamily = FontFamily.Monospace,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                }
+
+                TextButton(onClick = {
+                    showDebugTotp = !showDebugTotp
+                    if (showDebugTotp) {
+                        val secret = CredentialStore.loadTotpSecret(context)
+                        if (secret != null) {
+                            debugTotpSecret = secret
+                            debugTotpCode = TOTPGenerator.generate(secret)
+                            totpSecondsRemaining = 30 - ((System.currentTimeMillis() / 1000) % 30).toInt()
+                        }
+                    }
+                }) {
+                    Text(stringResource(R.string.totp_show_code))
                 }
             } else {
                 Text(
@@ -371,7 +460,32 @@ fun CredentialLoginScreen(
                         Text(stringResource(R.string.totp_save))
                     }
                 }
+                TextButton(onClick = { showQRScanner = true }) {
+                    Icon(
+                        Icons.Default.QrCodeScanner,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.height(0.dp))
+                    Text("  " + stringResource(R.string.totp_scan_qr))
+                }
             }
+        }
+    }
+
+    if (showQRScanner) {
+        Dialog(
+            onDismissRequest = { showQRScanner = false },
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            QRCodeScannerScreen(
+                onSecretFound = { secret ->
+                    CredentialStore.saveTotpSecret(context, secret)
+                    hasTotpSecret = true
+                    totpSecret = ""
+                },
+                onBack = { showQRScanner = false }
+            )
         }
     }
 

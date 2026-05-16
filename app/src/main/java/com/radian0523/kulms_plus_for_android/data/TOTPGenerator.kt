@@ -1,5 +1,6 @@
 package com.radian0523.kulms_plus_for_android.data
 
+import android.net.Uri
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
 
@@ -39,6 +40,18 @@ object TOTPGenerator {
         val otp = code % 1_000_000
 
         return String.format("%06d", otp)
+    }
+
+    /**
+     * otpauth:// URI から secret パラメータを抽出する。
+     */
+    fun extractSecret(otpauthUri: String): String? {
+        if (!otpauthUri.startsWith("otpauth://")) return null
+        val uri = Uri.parse(otpauthUri)
+        val secret = uri.getQueryParameter("secret") ?: return null
+        val cleaned = secret.replace(" ", "").replace("-", "").uppercase()
+        if (!isValidBase32(cleaned)) return null
+        return cleaned
     }
 
     /**

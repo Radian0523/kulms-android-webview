@@ -56,6 +56,10 @@
     <string name="totp_placeholder">Base32 secret key</string>
     <string name="totp_invalid_title">Invalid Secret</string>
     <string name="totp_invalid_message">Please enter a valid Base32 secret key.</string>
+    <string name="totp_scan_qr">Scan QR Code</string>
+    <string name="totp_show_code">Show current code</string>
+    <string name="totp_scan_guide">Point the camera at the two-factor authentication QR code</string>
+    <string name="totp_camera_permission">Camera permission is required to scan QR codes</string>
     <string name="close">Close</string>
 
     <!-- WebView toolbar -->
