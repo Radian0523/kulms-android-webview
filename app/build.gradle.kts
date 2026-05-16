@@ -12,8 +12,8 @@ android {
         applicationId = "com.radian0523.kulms_plus_for_android"
         minSdk = 26
         targetSdk = 35
-        versionCode = 24
-        versionName = "2.8.0"
+        versionCode = 25
+        versionName = "2.9.0"
     }
 
     buildTypes {
