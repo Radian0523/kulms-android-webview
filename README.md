@@ -16,7 +16,6 @@ WebView ベースで [kulms-extension](https://github.com/Radian0523/kulms-exten
 - 設定画面（通知カスタマイズ、セキュリティ説明、アプリ情報）
 - パスワードの暗号化保存（Android Keystore）
 - PDF等のファイルリンクを別画面で表示・ダウンロード（FileViewerActivity）
-- Tips タブ（日替わりランダム2件で使い方・アップデート情報を表示）
 - target="_blank" リンクおよび /access/ URL の自動インターセプト
 
 ## 構成
