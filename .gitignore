@@ -21,3 +21,6 @@ local.properties
 *.jks
 *.keystore
 .kotlin
+
+# リリース署名情報（パスワードを含むため絶対にコミットしない）
+keystore.properties
