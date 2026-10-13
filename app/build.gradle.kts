@@ -24,8 +24,8 @@ android {
         applicationId = "com.radian0523.kulms_plus_for_android"
         minSdk = 26
         targetSdk = 36
-        versionCode = 28
-        versionName = "2.10.1"
+        versionCode = 29
+        versionName = "2.10.2"
     }
 
     signingConfigs {
