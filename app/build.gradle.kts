@@ -69,7 +69,10 @@ android {
     // kulms-extension/_locales/ を含めるため、_* パターンを除去。
     @Suppress("UnstableApiUsage")
     androidResources {
-        ignoreAssetsPattern = "!.svn:!.git:!.ds_store:!*.scc:.*:CVS:thumbs.db:picasa.ini:*~"
+        // 後半は kulms-extension の開発用ファイル（node_modules/ や Safari プロジェクト、配布 ZIP 等）を除外
+        ignoreAssetsPattern = "!.svn:!.git:!.ds_store:!*.scc:.*:CVS:thumbs.db:picasa.ini:*~" +
+            ":!<dir>node_modules:!<dir>safari:!<dir>docs:!<dir>gas" +
+            ":!*.zip:!*.md:!*.sh:!package.json:!bun.lock:!eslint.config.js"
     }
 
     sourceSets {
